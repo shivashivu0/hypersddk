@@ -1,40 +1,50 @@
 // Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package consts
+package registry
 
 import (
-	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
+
+	"tokenvm/actions"
+	"tokenvm/auth"
+	"tokenvm/consts"
 )
 
-const (
-	// TODO: choose a human-readable part for your hyperchain
-	HRP = "hypersdk"
-	// TODO: choose a name for your hyperchain
-	Name = "hyperchain"
-	// TODO: choose a token symbol
-	Symbol = "HSK"
-)
-
-var ID ids.ID
-
+// Setup types
 func init() {
-	b := make([]byte, consts.IDLen)
-	copy(b, []byte(Name))
-	vmID, err := ids.ToID(b)
-	if err != nil {
-		panic(err)
-	}
-	ID = vmID
-}
+	consts.ActionRegistry = codec.NewTypeParser[chain.Action, *warp.Message]()
+	consts.AuthRegistry = codec.NewTypeParser[chain.Auth, *warp.Message]()
 
-// Instantiate registry here so it can be imported by any package. We set these
-// values in [controller/registry].
-var (
-	ActionRegistry *codec.TypeParser[chain.Action, *warp.Message, bool]
-	AuthRegistry   *codec.TypeParser[chain.Auth, *warp.Message, bool]
-)
+	errs := &wrappers.Errs{}
+	errs.Add(
+		// When registering new actions, ALWAYS make sure to append at the end.
+		consts.ActionRegistry.Register(&actions.Transfer{}, actions.UnmarshalTransfer, false),
+
+		// TODO: register action: actions.CreateAsset
+                consts.ActionRegistry.Register(&actions.CreateAsset{}, actions.UnmarshalCreateAsset, false),
+
+                // TODO: register action: actions.MintAsset
+                consts.ActionRegistry.Register(&actions.MintAsset{}, actions.UnmarshalMintAsset, false),
+
+                // TODO: register action: actions.MintAsset
+		consts.ActionRegistry.Register(&actions.BurnAsset{}, actions.UnmarshalBurnAsset, false),
+		consts.ActionRegistry.Register(&actions.ModifyAsset{}, actions.UnmarshalModifyAsset, false),
+
+		consts.ActionRegistry.Register(&actions.CreateOrder{}, actions.UnmarshalCreateOrder, false),
+		consts.ActionRegistry.Register(&actions.FillOrder{}, actions.UnmarshalFillOrder, false),
+		consts.ActionRegistry.Register(&actions.CloseOrder{}, actions.UnmarshalCloseOrder, false),
+
+		consts.ActionRegistry.Register(&actions.ImportAsset{}, actions.UnmarshalImportAsset, true),
+		consts.ActionRegistry.Register(&actions.ExportAsset{}, actions.UnmarshalExportAsset, false),
+
+		// When registering new auth, ALWAYS make sure to append at the end.
+		consts.AuthRegistry.Register(&auth.ED25519{}, auth.UnmarshalED25519, false),
+	)
+	if errs.Errored() {
+		panic(errs.Err)
+	}
+}
